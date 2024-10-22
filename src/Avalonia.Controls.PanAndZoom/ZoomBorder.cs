@@ -117,6 +117,9 @@ public partial class ZoomBorder : Border
 
     private void Border_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
+        string text = $"Wheel {e.Delta.X} {e.Delta.Y} {e.KeyModifiers} {e.RoutedEvent.EventArgsType} {e.GetCurrentPoint(this).Properties}";
+        Debug.WriteLine(text);
+        Debug.WriteLine(text);
         if (Math.Abs(e.Delta.Y) == 1 && Math.Abs(e.Delta.X) == 0 && EnableZoom)
         {
             Wheel(e);
@@ -142,6 +145,11 @@ public partial class ZoomBorder : Border
     private void Border_PointerMoved(object? sender, PointerEventArgs e)
     {
         Moved(e);
+    }
+
+    private void Border_PointerCaptureLost(object sender, PointerCaptureLostEventArgs e)
+    {
+        CaptureLost(sender, e);
     }
 
     private void Element_PropertyChanged(object sender, AvaloniaPropertyChangedEventArgs e)
@@ -179,8 +187,11 @@ public partial class ZoomBorder : Border
         {
             return;
         }
+
         _element = element;
         _element.PropertyChanged += Element_PropertyChanged;
+
+        PointerCaptureLost += Border_PointerCaptureLost;
         PointerWheelChanged += Border_PointerWheelChanged;
         PointerPressed += Border_PointerPressed;
         PointerReleased += Border_PointerReleased;
@@ -195,6 +206,7 @@ public partial class ZoomBorder : Border
             return;
         }
 
+        PointerCaptureLost -= Border_PointerCaptureLost;
         PointerWheelChanged -= Border_PointerWheelChanged;
         PointerPressed -= Border_PointerPressed;
         PointerReleased -= Border_PointerReleased;
@@ -221,7 +233,7 @@ public partial class ZoomBorder : Border
             return;
         }
 
-        if (_element != null && IsPanButtonPressed(e))
+        if (_element != null && !_captured && !_isPanning && IsPanButtonPressed(e))
         {
             var point = e.GetPosition(_element);
             BeginPanTo(point.X, point.Y);
@@ -231,7 +243,11 @@ public partial class ZoomBorder : Border
         }
     }
 
-    private void Released(PointerReleasedEventArgs e)
+    private void Released(PointerReleasedEventArgs e) => PanningFinished();
+
+    private void CaptureLost(object sender, PointerCaptureLostEventArgs e) => PanningFinished();
+
+    private void PanningFinished()
     {
         if (!EnablePan)
         {
